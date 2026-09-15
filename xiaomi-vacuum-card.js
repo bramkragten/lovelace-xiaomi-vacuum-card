@@ -5,6 +5,33 @@
         'color: darkblue; background: white; font-weight: bold;',
     );
 
+    // hass.formatEntityName only accepts a card's `name` option (a user string, a
+    // structured name, or undefined) from HA 2026.4. Earlier versions expose the
+    // same helper with an incompatible signature, so feature detection is not
+    // enough - the version has to be checked.
+    const supportsEntityNames = (hass) => {
+        const version = hass && hass.config && hass.config.version;
+        if (!version) return false;
+        const [major, minor] = version.split('.', 2);
+        return Number(major) > 2026 || (Number(major) === 2026 && Number(minor) >= 4);
+    };
+
+    // Resolves a `name` option against the entity's registry context (entity,
+    // device, area, floor). Falls back to the friendly name on older HA versions.
+    const computeEntityName = (hass, stateObj, name) => {
+        if (typeof name === 'string') return name;
+        if (!stateObj) return '';
+        if (supportsEntityNames(hass)) return hass.formatEntityName(stateObj, name);
+        return stateObj.attributes.friendly_name || '';
+    };
+
+    const NAME_SOURCES = ['formatEntityName', 'entities', 'devices', 'areas', 'floors'];
+
+    const entityNamesChanged = (oldHass, newHass) => {
+        if (!oldHass || !newHass) return false;
+        return NAME_SOURCES.some((key) => oldHass[key] !== newHass[key]);
+    };
+
     const state = {
         status: {
             key: 'status',
@@ -262,7 +289,7 @@
             return this.stateObj ? html`
             <ha-card class="background" style="${this.config.styles.background}">
               ${this.config.show.name ?
-                html`<div class="title">${this.config.name || this.stateObj.attributes.friendly_name}</div>`
+                html`<div class="title">${computeEntityName(this._hass, this.stateObj, this.config.name)}</div>`
                 : null}
               ${(this.config.show.state || this.config.show.attributes) ? html`
               <div class="grid" style="${this.config.styles.content}" @click="${() => this.fireEvent('hass-more-info')}">
@@ -355,6 +382,10 @@
         }
 
         shouldUpdate(changedProps) {
+            // The name resolves against the entity/device/area/floor registries, and
+            // HA swaps the real formatEntityName in asynchronously once translations
+            // load. Neither changes the state object, so neither shows up here.
+            if (entityNamesChanged(changedProps.get('_hass'), this._hass)) return true;
             return changedProps.has('stateObj');
         }
 

@@ -43,7 +43,7 @@ to `<config>/www/img/` or configure your own preferred path.
 | ---- | ---- | ------- | -----------
 | type | string | **Required** | `custom:xiaomi-vacuum-card`
 | entity | string | **Required** | `vacuum.my_xiaomi_vacuum`
-| name | string/bool | `friendly_name` | Override friendly name (set to `false` to hide)
+| name | string/list/bool | entity name | Override the entity name (set to `false` to hide). Accepts a [structured name](#structured-names) on Home Assistant 2026.4 and later
 | image | string/bool | `false` | Set path/filename of background image (i.e. `/local/img/vacuum.png`)
 | state | [Entity Data](#entity-data) | *(see below)* | Set to `false` to hide all states
 | attributes | [Entity Data](#entity-data) | *(see below)* | Set to `false` to hide all attributes
@@ -87,6 +87,30 @@ If you want any other vendors to be added, feel free to open an issue or contrib
 | vendor | string | `xiaomi` | Supported vendors: `xiaomi`, `xiaomi_mi`, `valetudo`, `ecovacs`, `deebot`, `deebot_slim`, `robovac`, `roomba`, `neato`
 
 *Note: Default attributes and buttons may change for each vendor integration.*
+
+### Structured names
+
+*Requires Home Assistant 2026.4 or later. On earlier versions a structured `name` falls back to the entity'"'"'s friendly name.*
+
+Home Assistant composes an entity'"'"'s display name out of its registry context
+(entity, device, area, floor) rather than one `friendly_name` string. `name` can
+be a list of those parts instead of a plain string, so it keeps following renames
+and matches what the built-in cards show:
+
+```yaml
+type: custom:xiaomi-vacuum-card
+entity: vacuum.xiaomi_vacuum
+name:
+  - type: area
+  - type: entity
+```
+
+Available part types are `entity`, `device`, `parent_device`, `area`, `floor`, and
+`text` (a literal, written as `{type: text, text: Robot}`). Parts that resolve to
+nothing are dropped. A plain string `name` keeps working exactly as before, and
+`name: false` still hides the title.
+
+See the [Home Assistant developer documentation](https://developers.home-assistant.io/docs/frontend/data#hassformatentitynamestateobj-name-options) for details.
 
 ## Screenshots
 
